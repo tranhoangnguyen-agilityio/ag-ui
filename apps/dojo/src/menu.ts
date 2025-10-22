@@ -2,6 +2,11 @@ import { MenuIntegrationConfig } from "./types/integration";
 
 export const menuIntegrations: MenuIntegrationConfig[] = [
   {
+    id: "openai-server",
+    name: "OpenAI Server",
+    features: ["agentic_chat"],
+  },
+  {
     id: "langgraph",
     name: "LangGraph (Python)",
     features: [
@@ -63,10 +68,10 @@ export const menuIntegrations: MenuIntegrationConfig[] = [
     id: 'spring-ai',
     name: 'Spring AI',
     features: [
-      'agentic_chat', 
-      'shared_state', 
-      'tool_based_generative_ui', 
-      'human_in_the_loop', 
+      'agentic_chat',
+      'shared_state',
+      'tool_based_generative_ui',
+      'human_in_the_loop',
       'agentic_generative_ui'
     ]
   },

@@ -19,9 +19,20 @@ import { ADKAgent } from "@ag-ui/adk";
 import { SpringAiAgent } from '@ag-ui/spring-ai';
 import { HttpAgent } from "@ag-ui/client";
 import { A2AMiddlewareAgent } from "@ag-ui/a2a-middleware";
+import { OpenAIServerAgent } from "@ag-ui/openai-server";
 
 const envVars = getEnvVars();
 export const agentsIntegrations: AgentIntegrationConfig[] = [
+  {
+    id: "openai-server",
+    agents: async () => {
+      return {
+        agentic_chat: new OpenAIServerAgent({
+          url: `${envVars.openAIServerUrl}/`,
+        }),
+      };
+    },
+  },
   {
     id: "middleware-starter",
     agents: async () => {
