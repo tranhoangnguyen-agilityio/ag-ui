@@ -15,10 +15,17 @@ from ag_ui.core import (
     TextMessageStartEvent,
     TextMessageContentEvent,
     TextMessageEndEvent,
+    ToolCallStartEvent,
+    ToolCallArgsEvent,
+    ToolCallEndEvent,
 )
 from ag_ui.encoder import EventEncoder
+from openai import OpenAI
 
 app = FastAPI(title="AG-UI Endpoint")
+
+# Initialize OpenAI client - uses OPENAI_API_KEY from environment
+client = OpenAI()
 
 @app.post("/")
 async def agentic_chat_endpoint(input_data: RunAgentInput, request: Request):
@@ -40,7 +47,37 @@ async def agentic_chat_endpoint(input_data: RunAgentInput, request: Request):
           ),
         )
 
+        # Call OpenAI's API with streaming enabled
+        stream = client.chat.completions.create(
+            model="gpt-4o",
+            stream=True,
+            # Convert AG-UI tools format to OpenAI's expected format
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    }
+                }
+                for tool in input_data.tools
+            ] if input_data.tools else None,
+            # Transform AG-UI messages to OpenAI's message format
+            messages=[
+                {
+                    "role": message.role,
+                    "content": message.content or "",
+                    # Include tool calls if this is an assistant message with tools
+                    **({"tool_calls": message.tool_calls} if message.role == "assistant" and hasattr(message, 'tool_calls') and message.tool_calls else {}),
+                    # Include tool call ID if this is a tool result message
+                    **({"tool_call_id": message.tool_call_id} if message.role == "tool" and hasattr(message, 'tool_call_id') else {}),
+                }
+                for message in input_data.messages
+            ],
+        )
         message_id = str(uuid.uuid4())
+        # Stream each chunk from OpenAI's response
 
         yield encoder.encode(
             TextMessageStartEvent(
@@ -50,13 +87,20 @@ async def agentic_chat_endpoint(input_data: RunAgentInput, request: Request):
             )
         )
 
-        yield encoder.encode(
-            TextMessageContentEvent(
-                type=EventType.TEXT_MESSAGE_CONTENT,
-                message_id=message_id,
-                delta="Hello world!"
-            )
-        )
+        for chunk in stream:
+            # Handle text content chunks
+            if chunk.choices[0].delta.content:
+                yield encoder.encode(
+                    TextMessageContentEvent(
+                        type=EventType.TEXT_MESSAGE_CONTENT,
+                        message_id=message_id,
+                        delta=chunk.choices[0].delta.content
+                    )
+                )
+            # Handle tool call chunks
+            elif chunk.choices[0].delta.tool_calls:
+                # TODO: Implement tool call handling
+                pass
 
         yield encoder.encode(
             TextMessageEndEvent(
