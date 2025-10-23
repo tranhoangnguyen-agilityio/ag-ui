@@ -20,6 +20,8 @@ import { SpringAiAgent } from '@ag-ui/spring-ai';
 import { HttpAgent } from "@ag-ui/client";
 import { A2AMiddlewareAgent } from "@ag-ui/a2a-middleware";
 import { OpenAIServerAgent } from "@ag-ui/openai-server";
+import { OpenAIAgent } from "@ag-ui/openai";
+
 
 const envVars = getEnvVars();
 export const agentsIntegrations: AgentIntegrationConfig[] = [
@@ -31,6 +33,14 @@ export const agentsIntegrations: AgentIntegrationConfig[] = [
           url: `${envVars.openAIServerUrl}/`,
         }),
       };
+    },
+  },
+  {
+    id: "openai",
+    agents: async () => {
+      return {
+        agentic_chat: new OpenAIAgent(),
+      }
     },
   },
   {

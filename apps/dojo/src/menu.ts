@@ -7,6 +7,11 @@ export const menuIntegrations: MenuIntegrationConfig[] = [
     features: ["agentic_chat"],
   },
   {
+    id: "openai",
+    name: "OpenAI",
+    features: ["agentic_chat"],
+  },
+  {
     id: "langgraph",
     name: "LangGraph (Python)",
     features: [

@@ -26,6 +26,7 @@
     "@ag-ui/server-starter-all-features": "workspace:*",
     "@ag-ui/vercel-ai-sdk": "workspace:*",
     "@ag-ui/openai-server": "workspace:*",
+    "@ag-ui/openai": "workspace:*",
     "@ai-sdk/openai": "^2.0.42",
     "@copilotkit/react-core": "1.10.6",
     "@copilotkit/react-ui": "1.10.6",
