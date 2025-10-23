@@ -2,7 +2,9 @@
 Example server for the AG-UI protocol.
 """
 
+from typing import Any
 import os
+from typing_extensions import Dict
 import uvicorn
 import uuid
 from fastapi import FastAPI, Request
@@ -21,6 +23,9 @@ from ag_ui.core import (
 )
 from ag_ui.encoder import EventEncoder
 from openai import OpenAI
+
+import logging
+logger = logging.getLogger("integration.openai-server")
 
 app = FastAPI(title="AG-UI Endpoint")
 
@@ -76,8 +81,8 @@ async def agentic_chat_endpoint(input_data: RunAgentInput, request: Request):
                 for message in input_data.messages
             ],
         )
+
         message_id = str(uuid.uuid4())
-        # Stream each chunk from OpenAI's response
 
         yield encoder.encode(
             TextMessageStartEvent(
@@ -87,7 +92,13 @@ async def agentic_chat_endpoint(input_data: RunAgentInput, request: Request):
             )
         )
 
+        active_tool_calls: Dict[str, Any] = {}
+        active_tool_call_id: str = None
+
+        # Stream each chunk from OpenAI's response
         for chunk in stream:
+            event = chunk.choices[0]
+
             # Handle text content chunks
             if chunk.choices[0].delta.content:
                 yield encoder.encode(
@@ -100,7 +111,41 @@ async def agentic_chat_endpoint(input_data: RunAgentInput, request: Request):
             # Handle tool call chunks
             elif chunk.choices[0].delta.tool_calls:
                 # TODO: Implement tool call handling
-                pass
+                tool_calls = chunk.choices[0].delta.tool_calls or []
+                for tool_call in tool_calls:
+                    if (tool_call.id and not active_tool_calls.get(tool_call.id)):
+                        active_tool_call_id = tool_call.id
+                        active_tool_calls[active_tool_call_id] = {
+                            'tool_call_id': active_tool_call_id
+                        }
+
+                        # Send tool call start event
+                        yield encoder.encode(
+                            ToolCallStartEvent(
+                                type=EventType.TOOL_CALL_START,
+                                tool_call_id=active_tool_call_id,
+                                tool_call_name=tool_call.function.name if tool_call.function else None,
+                                parent_message_id=message_id
+                            )
+                        )
+                    if (tool_call.function.arguments):
+                        # Stream function call arguments
+                        yield encoder.encode(
+                            ToolCallArgsEvent(
+                                type=EventType.TOOL_CALL_ARGS,
+                                tool_call_id=active_tool_call_id,
+                                delta=tool_call.function.arguments if tool_call.function else None,
+                            )
+                        )
+
+            if event.finish_reason == 'tool_calls':
+                for tool_call_id in active_tool_calls.keys():
+                    yield encoder.encode(
+                        ToolCallEndEvent(
+                            type=EventType.TOOL_CALL_END,
+                            tool_call_id=tool_call_id,
+                        )
+                    )
 
         yield encoder.encode(
             TextMessageEndEvent(
