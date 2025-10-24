@@ -19,7 +19,8 @@
     "unlink:global": "pnpm unlink --global"
   },
   "dependencies": {
-    "@ag-ui/client": "workspace:*"
+    "@ag-ui/client": "workspace:*",
+    "openai": "^4.104.0"
   },
   "peerDependencies": {
     "rxjs": "7.8.1"
